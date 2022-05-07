@@ -34,7 +34,7 @@ namespace Qualia.Umb.AjaxUniformResponseMiddleware
 
         private async Task ApplyResponseWrapper(HttpContext context)
         {
-            Exception exception = null;
+            Exception? exception = null;
             using var buffer = new MemoryStream();
             var stream = context.Response.Body;
             context.Response.Body = buffer;
