@@ -3,21 +3,24 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Newtonsoft.Json;
 using System.IO;
+using Microsoft.Extensions.Logging;
 
 namespace Qualia.Umb.AjaxUniformResponseMiddleware
 {
     internal class ResponseWrapperMiddleware
     {
         private readonly RequestDelegate _next;
+        private readonly ILogger<ResponseWrapperMiddleware> _logger;
 
-        public ResponseWrapperMiddleware(RequestDelegate next)
+        public ResponseWrapperMiddleware(RequestDelegate next, ILogger<ResponseWrapperMiddleware> logger)
         {
             _next = next;
+            this._logger = logger;
         }
 
         public async Task InvokeAsync(HttpContext context)
         {
-            if (context.Request.IsAjaxRequest())
+            if (context.Request.IsUniformRequest())
             {
                 await ApplyResponseWrapper(context);
             }
@@ -35,8 +38,9 @@ namespace Qualia.Umb.AjaxUniformResponseMiddleware
         private async Task ApplyResponseWrapper(HttpContext context)
         {
             Exception? exception = null;
-            using var buffer = new MemoryStream();
+            //keep a body reference, and use a buffer to capture changes
             var stream = context.Response.Body;
+            using var buffer = new MemoryStream();
             context.Response.Body = buffer;
 
             try
@@ -46,23 +50,30 @@ namespace Qualia.Umb.AjaxUniformResponseMiddleware
             catch (Exception ex)
             {
                 exception = ex;
+                _logger.LogError(ex, "Unhandled Exception with message '{msg}'", ex.Message);
             }
+            
+            string oldBody = await ReadSteamContent(buffer);
+            
+            context.Response.Body = stream;
+            context.Response.ContentType = System.Net.Mime.MediaTypeNames.Application.Json;
+            context.Response.ContentLength = null;
 
-            context.Response.Body.Seek(0, SeekOrigin.Begin);
-            using var bufferReader = new StreamReader(context.Response.Body);
             if (exception == null)
             {
-                await RewriteBody(context, bufferReader);
+                await RewriteBody(context, oldBody);
             }
             else
             {
                 await RewriteBody_wError(context, exception);
             }
-            context.Response.ContentType = System.Net.Mime.MediaTypeNames.Application.Json;
+        }
 
-            context.Response.Body.Seek(0, SeekOrigin.Begin);
-            await context.Response.Body.CopyToAsync(stream);
-            context.Response.Body = stream;
+        private async Task<string> ReadSteamContent(MemoryStream stream)
+        {
+            stream.Seek(0, SeekOrigin.Begin);
+            using var reader = new StreamReader(stream);
+            return await reader.ReadToEndAsync();
         }
 
         private async Task RewriteBody_wError(HttpContext context, Exception ex)
@@ -73,17 +84,14 @@ namespace Qualia.Umb.AjaxUniformResponseMiddleware
                 statusCode = ex is UserFriendlyException y ? (int)y.StatusCode : (int)System.Net.HttpStatusCode.InternalServerError
             };
 
-            context.Response.Body.Seek(0, SeekOrigin.Begin);
             await context.Response.WriteAsync(JsonConvert.SerializeObject(r));
         }
 
-        private async Task RewriteBody(HttpContext context, StreamReader bufferReader)
+        private async Task RewriteBody(HttpContext context, string bodyContent)
         {
             var statusCode = context.Response.StatusCode;
-            string body = await bufferReader.ReadToEndAsync();
-            var r = new ResponseWrapper { content = body, statusCode = statusCode };
+            var r = new ResponseWrapper { content = bodyContent, statusCode = statusCode };
 
-            context.Response.Body.Seek(0, SeekOrigin.Begin);
             await context.Response.WriteAsync(JsonConvert.SerializeObject(r));
         }
     }

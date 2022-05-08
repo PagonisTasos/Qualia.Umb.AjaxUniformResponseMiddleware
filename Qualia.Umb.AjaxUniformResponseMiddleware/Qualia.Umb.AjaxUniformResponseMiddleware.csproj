@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <TargetFramework>net6.0</TargetFramework>
 		<Nullable>enable</Nullable>
@@ -8,12 +8,12 @@
         <PackageId>Qualia.Umb.AjaxUniformResponseMiddleware</PackageId>
         <Title>Qualia.Umb.AjaxUniformResponseMiddleware</Title>
         <Description>
-			An umbraco cms package featuring a middleware for wrapping all ajax call responses in a uniform object with a status and content properties.
+			An umbraco cms package featuring a middleware for wrapping all responses in a uniform json object with a status and content properties.
 		</Description>
 		<PackageProjectUrl>https://github.com/PagonisTasos/Qualia.Umb.AjaxUniformResponseMiddleware</PackageProjectUrl>
         <PackageTags>umbraco plugin package; ajax uniform response middleware</PackageTags>
         <RootNamespace>Qualia.Umb.AjaxUniformResponseMiddleware</RootNamespace>
-		<Version>1.0.0</Version>
+		<Version>1.1.2</Version>
 		<Authors>Pagonis Tasos</Authors>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
     </PropertyGroup>
